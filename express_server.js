@@ -29,7 +29,7 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
-app.get("/urls/:shortURL", (req, res) => {
+app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]};
   res.render("urls_show", templateVars);
 });
@@ -38,7 +38,7 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
-app.get("/u/:shortURL", (req, res) => {
+app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
   const longURL = urlDatabase[req.params.shortURL];
   res.redirect(longURL);
 });
