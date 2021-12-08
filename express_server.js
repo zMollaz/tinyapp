@@ -85,6 +85,11 @@ app.post("/logout", (req, res) => {  //Clears the saved cookie
   res.redirect("/urls");
 });
 
+app.get("/register", (req, res) => {  //Renders the registration page
+  const templateVars = {username: req.cookies.username};
+  res.render("registration", templateVars);
+});
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
