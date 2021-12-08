@@ -53,7 +53,12 @@ app.post("/urls", (req, res) => {
 app.post("/urls/:shortURL/delete", (req, res) => { //Deletes url enteries and redirects
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls");
-})
+});
+
+app.post("/urls/:shortURL", (req, res) => { //Edits shortURL to assign a new longURL
+  urlDatabase[req.params.shortURL] = req.body.longURL;
+  res.redirect("/urls");
+});
 
 function generateRandomString() {  //Generates a random 6 digit string
   let result = "";
