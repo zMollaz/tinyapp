@@ -29,6 +29,10 @@ app.get("/", (req, res) => {
   res.send("Hello!");
 });
 
+app.get("/hello", (req, res) => {
+  res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
+
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
@@ -46,10 +50,6 @@ app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
 app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
   const templateVars = {username: req.cookies.username, shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]};
   res.render("urls_show", templateVars);
-});
-
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
 app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
