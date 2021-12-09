@@ -80,6 +80,11 @@ app.get("/register", (req, res) => {  //Renders the registration page
   res.render("registration", templateVars);
 });
 
+app.get("/login", (req, res) => {  //Renders the registration page
+  const templateVars = {user: users[req.cookies.user_id]};
+  res.render("login", templateVars);
+});
+
 app.post("/urls", (req, res) => {   //Generates shortUrl for a given longUrl and saves it to urlDatabase object
   console.log(req.body);  //Logs the shortURL:longURL pair in request body to the console
   const shortURL = generateRandomString();
