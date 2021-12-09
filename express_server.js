@@ -24,14 +24,24 @@ const users = {
   }
 };
 
-function generateRandomString() {  //Generates a random 6 digit string
+//Helper fucntions
+const findUserByEmail = (someEmail) => {
+  for (let key in users) {
+    if (users[key].email === someEmail) {
+      return true;
+    }
+  }
+};
+
+const generateRandomString = () => {  //Generates a random 6 digit string
   let result = "";
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   for (let i = 0; i < 6; i ++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
   }
   return result;
-}
+};
+
 //Routes
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -99,10 +109,19 @@ app.post("/logout", (req, res) => {  //Clears the saved cookie
 });
 
 app.post("/register", (req, res) => {  //Stores new user data and sets a cookie for user-id
+  const newEmail = req.body.email;
+  const newPassword = req.body.password;
+  if (!newEmail || !newPassword) {
+    res.status(400).send("*Email address and password fields cannot be empty*");
+  } 
+  else if (findUserByEmail(newEmail)) {
+    res.status(400).send("*A user with the same email address already exists*");
+  } else {
   const id = generateRandomString();
-  users[id] = {id: id, email: req.body.email, password: req.body.password}; 
+  users[id] = {id: id, email: newEmail, password: newPassword}; 
   res.cookie("user_id", id);
   res.redirect("/urls");
+  }
 });
 
 app.listen(PORT, () => {
