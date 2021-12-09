@@ -77,8 +77,12 @@ app.get("/urls", (req, res) => {  //Renders the all the urls in urlDatabase
 });
 
 app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
+  if (!req.cookies.user_id) {
+    res.redirect("/urls");
+  } else {
   const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
   res.render("urls_new", templateVars);
+  }
 });
 
 app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
@@ -102,10 +106,14 @@ app.get("/login", (req, res) => {  //Renders the registration page
 });
 
 app.post("/urls", (req, res) => {   //Generates shortUrl for a given longUrl and saves it to urlDatabase object
+  if (!req.cookies.user_id) {
+    res.redirect("/urls");
+  } else {
   console.log(req.body);  //Logs the shortURL:longURL pair in request body to the console
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = req.body.longURL;
   res.redirect(`/urls/${shortURL}`);
+  }
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => { //Deletes url enteries and redirects
