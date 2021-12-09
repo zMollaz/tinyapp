@@ -11,10 +11,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 //Data
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
-};
+const urlDatabase = {};
 
 const users = {
   "userRandomID": {
@@ -73,6 +70,7 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/urls", (req, res) => {  //Renders the all the urls in urlDatabase
   const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
+  console.log(urlDatabase)
   res.render("urls_index", templateVars);
 });
 
@@ -80,19 +78,24 @@ app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
   if (!req.cookies.user_id) {
     res.redirect("/urls");
   } else {
-  const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
-  res.render("urls_new", templateVars);
+    const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
+    res.render("urls_new", templateVars);
   }
 });
 
 app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
-  const templateVars = { user: users[req.cookies.user_id], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
+  const templateVars = { user: users[req.cookies.user_id], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
   res.render("urls_show", templateVars);
 });
 
 app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
-  const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);
+  const urlID = Object.keys(urlDatabase);
+  if (urlID.includes(req.params.shortURL)) {
+    const longURL = urlDatabase[req.params.shortURL].longURL;
+    res.redirect(longURL);
+  } else {
+    res.status(404).send("*Page not found*");
+  }
 });
 
 app.get("/register", (req, res) => {  //Renders the registration page
@@ -109,10 +112,10 @@ app.post("/urls", (req, res) => {   //Generates shortUrl for a given longUrl and
   if (!req.cookies.user_id) {
     res.redirect("/urls");
   } else {
-  console.log(req.body);  //Logs the shortURL:longURL pair in request body to the console
-  const shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
-  res.redirect(`/urls/${shortURL}`);
+    console.log(req.body);  //Logs the shortURL:longURL pair in request body to the console
+    const shortURL = generateRandomString();
+    urlDatabase[shortURL] = { userID: req.cookies.user_id, longURL: req.body.longURL };
+    res.redirect(`/urls/${shortURL}`);
   }
 });
 
@@ -122,7 +125,7 @@ app.post("/urls/:shortURL/delete", (req, res) => { //Deletes url enteries and re
 });
 
 app.post("/urls/:shortURL", (req, res) => { //Edits shortURL to assign a new longURL
-  urlDatabase[req.params.shortURL] = req.body.longURL;
+  urlDatabase[req.params.shortURL].longURL = req.body.longURL;
   res.redirect("/urls");
 });
 

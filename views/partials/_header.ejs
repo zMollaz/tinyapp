@@ -12,14 +12,14 @@
         <% if (user) { %>
           <form class="nav-item" method="POST" action="/logout" style="position:absolute; right: 50px; top: 13px">
             <label>Logged in as: <%=user.email%></label>
-            <button class="btn btn-outline-dark" type="Submit">Logout</button>
+            <button class="btn btn-outline-dark" style="color:white" type="Submit">Logout</button>
           </form>
           <% } else { %>
           <form class="nav-item" method="GET" action="/register" style="position:absolute; right: 150px; top: 13px">
-            <button class="btn btn-primary" type="Submit">Register</button>
+            <button class="btn btn-outline-dark" style="color:white" type="Submit">Register</button>
           </form>
           <form class="nav-item" method="GET" action="/login" style="position:absolute; right: 50px; top: 13px">
-            <button class="btn btn-primary" type="Submit">Login</button>
+            <button class="btn btn-outline-dark" style="color:white" type="Submit">Login</button>
           </form>
         <% } %>
     </div>
