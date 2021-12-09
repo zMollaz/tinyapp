@@ -69,10 +69,25 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {  //Renders the all the urls in urlDatabase
-  const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
-  console.log(urlDatabase)
-  res.render("urls_index", templateVars);
-});
+  
+  const user = Object.values(urlDatabase);
+  const arrID = user.map(id => id.userID);
+  for (let id of user) {
+    arrID.push(id.userID)
+  } //pass a paramter to tempalte var in order to control who sees the urls
+  if (arrID.includes(req.cookies.user_id)) {
+    const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id], logged: true};
+    console.log(urlDatabase)
+    res.render("urls_index", templateVars);
+  }
+  if (!arrID.includes(req.cookies.user_id)) {
+    const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id], logged: false};
+    console.log(urlDatabase)
+    res.render("urls_index", templateVars);
+    //res.status(403).send("*Register now or login to view this page*");
+  } 
+  console.log(arrID)
+  });
 
 app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
   if (!req.cookies.user_id) {
@@ -84,8 +99,19 @@ app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
 });
 
 app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
-  const templateVars = { user: users[req.cookies.user_id], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
-  res.render("urls_show", templateVars);
+  const user = Object.keys(urlDatabase); //array of shortURL
+  for (let urlID of user) {
+    console.log(urlID.userID)
+    if (urlDatabase[urlID].userID === req.cookies.user_id) {
+      console.log(urlID.userID)
+      const templateVars = { user: users[req.cookies.user_id], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
+      res.render("urls_show", templateVars);
+    } else {
+      console.log(urlID.userID)
+       res.status(403).send("*This url Register now or login to view this page*");
+     }
+
+  } //pass a paramter to tempalte var in order to control who sees the urls
 });
 
 app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
