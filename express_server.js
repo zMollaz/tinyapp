@@ -4,6 +4,8 @@ const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session')
 const bcrypt = require('bcryptjs');
+const { findUserByEmail, findIdByEmail, findPasswordByEmail,
+  urlsForUser, generateRandomString } = require("./helpers");
 
 app.set("view engine", "ejs");
 
@@ -25,70 +27,6 @@ const users = {
   }
 };
 
-//Helper fucntions
-const findUserByEmail = (someEmail) => {
-  for (let user in users) {
-    if (users[user].email === someEmail) {
-      return true;
-    }
-  }
-};
-
-const findPasswordByEmail = (someEmail) => {
-  for (let user in users) {
-    if (users[user].email === someEmail) {
-      return users[user].password;
-    }
-  }
-};
-
-const findIdByEmail = (someEmail) => {
-  for (let user in users) {
-    if (users[user].email === someEmail) {
-      return users[user].id;
-    }
-  }
-};
-
-const urlsForUser = (id) => {
-  const userURLS = {};
-  const keys = Object.keys(urlDatabase);
-  for (let url of keys) {
-    if (urlDatabase[url].userID === id) {
-      userURLS[url] = { userID: id, longURL: urlDatabase[url].longURL };
-    }
-  }
-  return userURLS;
-};
-
-const verifyURL = (url, cookie, res) => {
-  const keys = Object.keys(urlDatabase);
-  let action;
-  if (cookie) {
-    if (keys.includes(url)) {
-      if (urlDatabase[url].userID === cookie) {
-        const templateVars = { user: users[cookie], shortURL: url, longURL: urlDatabase[url].longURL };
-        action = res.render("urls_show", templateVars);
-      } else {
-        action = res.status(403).send("* This url belongs to another user*");
-      }
-    } else {
-      action = res.status(403).send("* This url does not exist*");
-    }
-  } else {
-    action = res.status(403).send("* Register now or login to view this page*");
-  }
-  return action;
-};
-
-const generateRandomString = () => {  //Generates a random 6 digit string
-  let result = "";
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 6; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
-};
 
 //Routes
 app.get("/", (req, res) => {
@@ -106,7 +44,7 @@ app.get("/urls.json", (req, res) => {
 app.get("/urls", (req, res) => {  //Renders the all the urls in urlDatabase
   const user = Object.values(urlDatabase);
   const arrID = user.map(id => id.userID);
-  const userOwnUrls = urlsForUser(req.session.user_id);
+  const userOwnUrls = urlsForUser(req.session.user_id, urlDatabase);
 
   for (let id of user) {
     arrID.push(id.userID)
@@ -135,7 +73,23 @@ app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
 //the function below might still need work templateVar ???
 app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
   //const userOwnUrls = urlsForUser(req.session.user_id);
-  verifyURL(req.params.shortURL, req.session.user_id, res)
+  const keys = Object.keys(urlDatabase);
+  const url = req.params.shortURL;
+  const cookie = req.session.user_id;
+  if (cookie) {
+    if (keys.includes(url)) {
+      if (urlDatabase[url].userID === cookie) {
+        const templateVars = { user: users[cookie], shortURL: url, longURL: urlDatabase[url].longURL };
+        res.render("urls_show", templateVars);
+      } else {
+        res.status(403).send("* This url belongs to another user*");
+      }
+    } else {
+      res.status(403).send("* This url does not exist*");
+    }
+  } else {
+    res.status(403).send("* Register now or login to view this page*");
+  }
 });
 
 app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
@@ -204,12 +158,13 @@ app.post("/login", (req, res) => {  //Sets a new cookie with the username value
   if (!existingEmail || !existingPassword) {
     res.status(400).send("*Email address and password fields cannot be empty*");
   }
-  if (!findUserByEmail(existingEmail)) {
+  if (!findUserByEmail(existingEmail, users)) {
+    console.log(findUserByEmail(existingEmail, urlDatabase))
     res.status(403).send("*This email address is not a registered user*");
   }
-  if (findUserByEmail(existingEmail)) {
-    if (bcrypt.compareSync(existingPassword, findPasswordByEmail(existingEmail))) {
-      req.session.user_id = findIdByEmail(existingEmail);
+  if (findUserByEmail(existingEmail, users)) {
+    if (bcrypt.compareSync(existingPassword, findPasswordByEmail(existingEmail, users))) {
+      req.session.user_id = findIdByEmail(existingEmail, users);
       res.redirect("/urls");
     } else {
       res.status(403).send("*Password does not match our records; please try again*");
@@ -224,10 +179,11 @@ app.post("/register", (req, res) => {  //Stores new user data and sets a cookie 
   if (!newEmail || !hashedPassword) {
     res.status(400).send("*Email address and password fields cannot be empty*");
   }
-  if (findUserByEmail(newEmail)) {
+  if (findUserByEmail(newEmail, users)) {
     res.status(400).send("*A user with the same email address already exists*");
   }
-  if (!findUserByEmail(newEmail)) {
+  if (!findUserByEmail(newEmail, users)) {
+    console.log(findUserByEmail(newEmail, users))
     const id = generateRandomString();
     users[id] = { id: id, email: newEmail, password: hashedPassword };
     req.session.user_id = id;
