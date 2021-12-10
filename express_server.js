@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcryptjs');
 
 app.set("view engine", "ejs");
 
@@ -204,7 +205,7 @@ app.post("/login", (req, res) => {  //Sets a new cookie with the username value
     res.status(403).send("*This email address is not a registered user*");
   }
   if (findUserByEmail(existingEmail)) {
-    if (findPasswordByEmail(existingEmail) === existingPassword) {
+    if (bcrypt.compareSync(existingPassword, findPasswordByEmail(existingEmail))) {
       res.cookie("user_id", findIdByEmail(existingEmail));
       res.redirect("/urls");
     } else {
@@ -213,15 +214,11 @@ app.post("/login", (req, res) => {  //Sets a new cookie with the username value
   }
 });
 
-app.post("/logout", (req, res) => {  //Clears the saved cookie
-  res.clearCookie("user_id");
-  res.redirect("/urls");
-});
-
 app.post("/register", (req, res) => {  //Stores new user data and sets a cookie for user-id
   const newEmail = req.body.email;
   const newPassword = req.body.password;
-  if (!newEmail || !newPassword) {
+  const hashedPassword = bcrypt.hashSync(newPassword, 10)
+  if (!newEmail || !hashedPassword) {
     res.status(400).send("*Email address and password fields cannot be empty*");
   }
   if (findUserByEmail(newEmail)) {
@@ -229,10 +226,15 @@ app.post("/register", (req, res) => {  //Stores new user data and sets a cookie 
   }
   if (!findUserByEmail(newEmail)) {
     const id = generateRandomString();
-    users[id] = { id: id, email: newEmail, password: newPassword };
+    users[id] = { id: id, email: newEmail, password: hashedPassword };
     res.cookie("user_id", id);
     res.redirect("/urls");
   }
+});
+
+app.post("/logout", (req, res) => {  //Clears the saved cookie
+  res.clearCookie("user_id");
+  res.redirect("/urls");
 });
 
 app.listen(PORT, () => {
