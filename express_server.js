@@ -2,14 +2,17 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session')
 const bcrypt = require('bcryptjs');
 
 app.set("view engine", "ejs");
 
 //Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: "session",
+  keys: ["IOgG6x", "QbDRJf"],
+}));
 
 //Data
 const urlDatabase = {};
@@ -103,36 +106,36 @@ app.get("/urls.json", (req, res) => {
 app.get("/urls", (req, res) => {  //Renders the all the urls in urlDatabase
   const user = Object.values(urlDatabase);
   const arrID = user.map(id => id.userID);
-  const userOwnUrls = urlsForUser(req.cookies.user_id);
+  const userOwnUrls = urlsForUser(req.session.user_id);
 
   for (let id of user) {
     arrID.push(id.userID)
   } //pass a paramter to tempalte var in order to control who sees the urls
 
-  if (arrID.includes(req.cookies.user_id)) {
-    const templateVars = { urls: userOwnUrls, user: users[req.cookies.user_id], logged: true };
+  if (arrID.includes(req.session.user_id)) {
+    const templateVars = { urls: userOwnUrls, user: users[req.session.user_id], logged: true };
     res.render("urls_index", templateVars);
   }
-  if (!arrID.includes(req.cookies.user_id)) {
-    const templateVars = { urls: userOwnUrls, user: users[req.cookies.user_id], logged: false };
+  if (!arrID.includes(req.session.user_id)) {
+    const templateVars = { urls: userOwnUrls, user: users[req.session.user_id], logged: false };
     res.render("urls_index", templateVars);
     //res.status(403).send("*Register now or login to view this page*");
   }
 });
 
 app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
-  if (!req.cookies.user_id) {
+  if (!req.session.user_id) {
     res.redirect("/urls");
   } else {
-    const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
+    const templateVars = { urls: urlDatabase, user: users[req.session.user_id] };
     res.render("urls_new", templateVars);
   }
 });
 
 //the function below might still need work templateVar ???
 app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
-  //const userOwnUrls = urlsForUser(req.cookies.user_id);
-  verifyURL(req.params.shortURL, req.cookies.user_id, res)
+  //const userOwnUrls = urlsForUser(req.session.user_id);
+  verifyURL(req.params.shortURL, req.session.user_id, res)
 });
 
 app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
@@ -146,32 +149,32 @@ app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
 });
 
 app.get("/register", (req, res) => {  //Renders the registration page
-  const templateVars = { user: users[req.cookies.user_id] };
+  const templateVars = { user: users[req.session.user_id] };
   res.render("registration", templateVars);
 });
 
 app.get("/login", (req, res) => {  //Renders the registration page
-  const templateVars = { user: users[req.cookies.user_id] };
+  const templateVars = { user: users[req.session.user_id] };
   res.render("login", templateVars);
 });
 
 app.post("/urls", (req, res) => {   //Generates shortUrl for a given longUrl and saves it to urlDatabase object
-  if (!req.cookies.user_id) {
+  if (!req.session.user_id) {
     res.status(403).send("*Register now or login to view this page*");
     res.redirect("/urls");
   } else {
     console.log(req.body);  //Logs the shortURL:longURL pair in request body to the console
     const shortURL = generateRandomString();
-    urlDatabase[shortURL] = { userID: req.cookies.user_id, longURL: req.body.longURL };
+    urlDatabase[shortURL] = { userID: req.session.user_id, longURL: req.body.longURL };
     res.redirect(`/urls/${shortURL}`);
   }
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => { //Deletes url enteries and redirects
   const keys = Object.keys(urlDatabase);
-  if (req.cookies.user_id) {
+  if (req.session.user_id) {
     if (keys.includes(req.params.shortURL)) {
-      if (urlDatabase[req.params.shortURL].userID === req.cookies.user_id) {
+      if (urlDatabase[req.params.shortURL].userID === req.session.user_id) {
         delete urlDatabase[req.params.shortURL];
         res.redirect("/urls");
       } else {
@@ -186,7 +189,7 @@ app.post("/urls/:shortURL/delete", (req, res) => { //Deletes url enteries and re
 });
 
 app.post("/urls/:shortURL", (req, res) => { //Edits shortURL to assign a new longURL
-  if (!req.cookies.user_id) {
+  if (!req.session.user_id) {
     res.status(403).send("*You are not authorized to perform this action*");
     res.redirect("/urls");
   } else {
@@ -206,7 +209,7 @@ app.post("/login", (req, res) => {  //Sets a new cookie with the username value
   }
   if (findUserByEmail(existingEmail)) {
     if (bcrypt.compareSync(existingPassword, findPasswordByEmail(existingEmail))) {
-      res.cookie("user_id", findIdByEmail(existingEmail));
+      req.session.user_id = findIdByEmail(existingEmail);
       res.redirect("/urls");
     } else {
       res.status(403).send("*Password does not match our records; please try again*");
@@ -227,13 +230,13 @@ app.post("/register", (req, res) => {  //Stores new user data and sets a cookie 
   if (!findUserByEmail(newEmail)) {
     const id = generateRandomString();
     users[id] = { id: id, email: newEmail, password: hashedPassword };
-    res.cookie("user_id", id);
+    req.session.user_id = id;
     res.redirect("/urls");
   }
 });
 
 app.post("/logout", (req, res) => {  //Clears the saved cookie
-  res.clearCookie("user_id");
+  req.session.user_id = null;
   res.redirect("/urls");
 });
 
