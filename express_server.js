@@ -46,6 +46,37 @@ const findIdByEmail = (someEmail) => {
   }
 };
 
+const urlsForUser = (id) => {
+  const userURLS = {};
+  const keys = Object.keys(urlDatabase);
+  for (let url of keys) {
+    if (urlDatabase[url].userID === id) {
+      userURLS[url] = { userID: id, longURL: urlDatabase[url].longURL };
+    }
+  }
+  return userURLS;
+};
+
+const verifyURL = (url, cookie, res) => {
+  const keys = Object.keys(urlDatabase);
+  let action;
+  if (cookie) {
+    if (keys.includes(url)) {
+      if (urlDatabase[url].userID === cookie) {
+        const templateVars = { user: users[cookie], shortURL: url, longURL: urlDatabase[url].longURL };
+        action = res.render("urls_show", templateVars);
+      } else {
+        action = res.status(403).send("* This url belongs to another user*");
+      }
+    } else {
+      action = res.status(403).send("* This url does not exist*");
+    }
+  } else {
+    action = res.status(403).send("* Register now or login to view this page*");
+  }
+  return action;
+};
+
 const generateRandomString = () => {  //Generates a random 6 digit string
   let result = "";
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -69,25 +100,24 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {  //Renders the all the urls in urlDatabase
-  
   const user = Object.values(urlDatabase);
   const arrID = user.map(id => id.userID);
+  const userOwnUrls = urlsForUser(req.cookies.user_id);
+
   for (let id of user) {
     arrID.push(id.userID)
   } //pass a paramter to tempalte var in order to control who sees the urls
+
   if (arrID.includes(req.cookies.user_id)) {
-    const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id], logged: true};
-    console.log(urlDatabase)
+    const templateVars = { urls: userOwnUrls, user: users[req.cookies.user_id], logged: true };
     res.render("urls_index", templateVars);
   }
   if (!arrID.includes(req.cookies.user_id)) {
-    const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id], logged: false};
-    console.log(urlDatabase)
+    const templateVars = { urls: userOwnUrls, user: users[req.cookies.user_id], logged: false };
     res.render("urls_index", templateVars);
     //res.status(403).send("*Register now or login to view this page*");
-  } 
-  console.log(arrID)
-  });
+  }
+});
 
 app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
   if (!req.cookies.user_id) {
@@ -98,20 +128,10 @@ app.get("/urls/new", (req, res) => {  //Renders a page to create a new shortUrl
   }
 });
 
+//the function below might still need work templateVar ???
 app.get("/urls/:shortURL", (req, res) => {  //Renders the tinyURL page for longURL from visiting the shortURL
-  const user = Object.keys(urlDatabase); //array of shortURL
-  for (let urlID of user) {
-    console.log(urlID.userID)
-    if (urlDatabase[urlID].userID === req.cookies.user_id) {
-      console.log(urlID.userID)
-      const templateVars = { user: users[req.cookies.user_id], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
-      res.render("urls_show", templateVars);
-    } else {
-      console.log(urlID.userID)
-       res.status(403).send("*This url Register now or login to view this page*");
-     }
-
-  } //pass a paramter to tempalte var in order to control who sees the urls
+  //const userOwnUrls = urlsForUser(req.cookies.user_id);
+  verifyURL(req.params.shortURL, req.cookies.user_id, res)
 });
 
 app.get("/u/:shortURL", (req, res) => {  //Redirects to longURL page directly
@@ -136,6 +156,7 @@ app.get("/login", (req, res) => {  //Renders the registration page
 
 app.post("/urls", (req, res) => {   //Generates shortUrl for a given longUrl and saves it to urlDatabase object
   if (!req.cookies.user_id) {
+    res.status(403).send("*Register now or login to view this page*");
     res.redirect("/urls");
   } else {
     console.log(req.body);  //Logs the shortURL:longURL pair in request body to the console
@@ -146,13 +167,31 @@ app.post("/urls", (req, res) => {   //Generates shortUrl for a given longUrl and
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => { //Deletes url enteries and redirects
-  delete urlDatabase[req.params.shortURL];
-  res.redirect("/urls");
+  const keys = Object.keys(urlDatabase);
+  if (req.cookies.user_id) {
+    if (keys.includes(req.params.shortURL)) {
+      if (urlDatabase[req.params.shortURL].userID === req.cookies.user_id) {
+        delete urlDatabase[req.params.shortURL];
+        res.redirect("/urls");
+      } else {
+        res.status(403).send("* This url belongs to another user*");
+      }
+    } else {
+      res.status(403).send("* This url does not exist*");
+    }
+  } else {
+    res.status(403).send("*You are not authorized to perform this action*");
+  }
 });
 
 app.post("/urls/:shortURL", (req, res) => { //Edits shortURL to assign a new longURL
-  urlDatabase[req.params.shortURL].longURL = req.body.longURL;
-  res.redirect("/urls");
+  if (!req.cookies.user_id) {
+    res.status(403).send("*You are not authorized to perform this action*");
+    res.redirect("/urls");
+  } else {
+    urlDatabase[req.params.shortURL].longURL = req.body.longURL;
+    res.redirect("/urls");
+  }
 });
 
 app.post("/login", (req, res) => {  //Sets a new cookie with the username value
